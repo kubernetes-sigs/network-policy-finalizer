@@ -61,7 +61,7 @@ type Controller struct {
 	client                kubernetes.Interface
 	networkpolicyLister   networkinglisters.NetworkPolicyLister
 	networkpoliciesSynced cache.InformerSynced
-	queue                 workqueue.RateLimitingInterface
+	queue                 workqueue.TypedRateLimitingInterface[string]
 }
 
 // NewController creates a new Controller.
@@ -73,7 +73,10 @@ func NewController(
 		client:                client,
 		networkpolicyLister:   networkpolicyInformer.Lister(),
 		networkpoliciesSynced: networkpolicyInformer.Informer().HasSynced,
-		queue:                 workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "network-policy-finalizer"),
+		queue: workqueue.NewTypedRateLimitingQueueWithConfig(
+			workqueue.DefaultTypedControllerRateLimiter[string](),
+			workqueue.TypedRateLimitingQueueConfig[string]{Name: "network-policy-finalizer"},
+		),
 	}
 
 	networkpolicyInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{ // nolint:errcheck
@@ -102,8 +105,8 @@ func (c *Controller) processNextItem() bool {
 	}
 	defer c.queue.Done(key)
 
-	err := c.sync(key.(string))
-	c.handleErr(err, key.(string))
+	err := c.sync(key)
+	c.handleErr(err, key)
 	return true
 }
 
@@ -140,8 +143,8 @@ func (c *Controller) sync(key string) error {
 		}
 
 		// namespace is being deleted, wait for the Pods to be deleted
-		podStore, podController := cache.NewInformer(
-			&cache.ListWatch{
+		podStore, podController := cache.NewInformerWithOptions(cache.InformerOptions{
+			ListerWatcher: &cache.ListWatch{
 				ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 					podList, err := c.client.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
 					return podList, err
@@ -150,10 +153,10 @@ func (c *Controller) sync(key string) error {
 					return c.client.CoreV1().Pods(namespace).Watch(context.Background(), metav1.ListOptions{})
 				},
 			},
-			&v1.Pod{},
-			0,
-			cache.ResourceEventHandlerFuncs{},
-		)
+			ObjectType:   &v1.Pod{},
+			ResyncPeriod: 0,
+			Handler:      cache.ResourceEventHandlerFuncs{},
+		})
 		ctx := context.Background()
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
