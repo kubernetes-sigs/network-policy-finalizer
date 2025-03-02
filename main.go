@@ -237,7 +237,7 @@ func (c *Controller) handleErr(err error, key string) {
 
 	// This controller retries 5 times if something goes wrong. After that, it stops trying.
 	if c.queue.NumRequeues(key) < 5 {
-		klog.Infof("Error syncing pod %v: %v", key, err)
+		klog.Infof("Error syncing NetworkPolicy %v: %v", key, err)
 
 		c.queue.AddRateLimited(key)
 		return
