@@ -253,7 +253,7 @@ func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 
 	defer c.queue.ShutDown()
-	klog.Info("Starting network policy terminatot controller")
+	klog.Info("Starting network policy termination controller")
 
 	if !cache.WaitForCacheSync(stopCh, c.networkpoliciesSynced) {
 		utilruntime.HandleError(fmt.Errorf("timed out waiting for caches to sync"))
