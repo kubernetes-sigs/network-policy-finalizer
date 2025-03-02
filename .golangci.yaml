@@ -1,0 +1,22 @@
+run:
+  timeout: 30m
+  tests: false # TODO lint tests too
+
+linters:
+  disable-all: true
+  enable:
+    - gocritic
+    - gosimple
+    - govet
+    - errcheck
+    - ineffassign
+    - staticcheck
+    - stylecheck
+    - typecheck
+
+issues:
+  exclude-rules:
+    # metrics use the names of the kernel variables using snake case format
+    - path: pkg/networkpolicy/metrics.go
+      linters:
+        - stylecheck
