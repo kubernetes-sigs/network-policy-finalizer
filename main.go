@@ -180,7 +180,6 @@ func (c *Controller) sync(key string) error {
 }
 
 func (c *Controller) addFinalizer(networkPolicy *networkingv1.NetworkPolicy) error {
-
 	// check if there is a finalizer and add it if is missing
 	if slices.Contains(networkPolicy.GetFinalizers(), finalizer) {
 		return nil
