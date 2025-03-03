@@ -1,0 +1,100 @@
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: network-policy-finalizer
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - namespaces
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+     - "networking.k8s.io"
+    resources:
+      - networkpolicies
+    verbs:
+      - list
+      - watch
+      - patch
+  - apiGroups:
+    - coordination.k8s.io
+    resources:
+    - leases
+    verbs:
+    - get
+    - list
+    - watch
+    - create
+    - update
+    - delete
+    - patch
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: network-policy-finalizer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: network-policy-finalizer
+subjects:
+  - kind: ServiceAccount
+    name: network-policy-finalizer
+    namespace: kube-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: network-policy-finalizer
+  namespace: kube-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: network-policy-finalizer
+  namespace: kube-system
+  labels:
+    app: network-policy-finalizer
+    k8s-app: network-policy-finalizer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: network-policy-finalizer
+  template:
+    metadata:
+      labels:
+        app: network-policy-finalizer
+        k8s-app: network-policy-finalizer
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role.kubernetes.io/control-plane
+                operator: Exists
+      tolerations:
+        - operator: Exists
+          effect: NoSchedule
+      serviceAccountName: network-policy-finalizer
+      containers:
+        - name: network-policy-finalizer
+          image: registry.k8s.io/networking/network-policy-finalizer:v0.1.0
+          args:
+          - /bin/netpol-finalizer
+          - -v
+          - "2"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "50Mi"
+            limits:
+              cpu: "100m"
+              memory: "50Mi"
+---
